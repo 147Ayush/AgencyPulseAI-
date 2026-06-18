@@ -1,0 +1,1472 @@
+{
+  "name": "Weekly Scheduler",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtMinute": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -3616,
+        -1392
+      ],
+      "id": "25da4760-a060-4113-8f0d-095f9c44e735",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me",
+      "typeVersion": 1,
+      "position": [
+        -3200,
+        -1232
+      ],
+      "id": "ba56401e-843b-4e93-8332-6f2a579dbbd9",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -3616,
+        -496
+      ],
+      "id": "8fda780e-e227-49ce-a58e-7be0d0e30ef1",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me1",
+      "typeVersion": 1,
+      "position": [
+        -3200,
+        -320
+      ],
+      "id": "048f6f25-85ba-4554-a2ec-c115333692df",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    id,\n    client_name,\n    email,\n    website_url,\n    ga4_property_id,\n    gsc_site_url\nFROM clients\nWHERE active = 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -3408,
+        -1392
+      ],
+      "id": "1d1fdd20-6fa4-4bca-a64c-7463ccc2cabd",
+      "name": "Get Active Clients",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO report_jobs\n(\n    client_id,\n    status\n)\nVALUES\n(\n    {{ $json.id }},\n    'PENDING'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -2992,
+        -1408
+      ],
+      "id": "55140091-3893-4fa2-a7f7-11c690084af6",
+      "name": "Insert PENDING Job",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    rj.id AS report_job_id,\n    c.id AS client_id,\n    c.client_name,\n    c.ga4_property_id,\n    c.gsc_site_url\nFROM report_jobs rj\nJOIN clients c\nON c.id = rj.client_id\nWHERE rj.status='PENDING';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -3408,
+        -496
+      ],
+      "id": "a4097119-5539-4a2a-b5c9-bbb23a892464",
+      "name": "Get PENDING Jobs",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE report_jobs\nSET status='COLLECTING'\nWHERE id={{ $json.report_job_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -2992,
+        -512
+      ],
+      "id": "37ab388e-5888-49e4-9327-8d77e277d7c2",
+      "name": "Update Status = COLLECTING",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -2304,
+        -512
+      ],
+      "id": "01576da7-e7a5-49fd-a535-494cfdcead97",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO metrics\n(\n    client_id,\n    report_job_id,\n    sessions,\n    users_count,\n    pageviews,\n    event_count,\n    clicks,\n    impressions,\n    ctr,\n    avg_position\n)\nVALUES\n(\n    {{ $json.client_id }},\n    {{ $json.report_job_id }},\n    {{ $json.sessions }},\n    {{ $json.users_count }},\n    {{$json.screenPageViews}},\n    {{$json.eventCount}},\n    {{ $json.clicks }},\n    {{ $json.impressions }},\n    {{ $json.ctr }},\n    {{ $json.avg_position }}\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -2144,
+        -512
+      ],
+      "id": "acbd1961-f49a-4ac5-9d39-f6d12620f8c0",
+      "name": "Insert Metrics",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE report_jobs\nSET status = 'GENERATING',\n    updated_at = NOW()\nWHERE id = {{ $('Merge').item.json.report_job_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -1968,
+        -512
+      ],
+      "id": "180beb5d-c478-4fa4-8aec-bc3cbf1358a3",
+      "name": "Update Status = GENERATING",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "781fd2be-e17a-48aa-865f-95902ee35efe",
+              "name": "report_job_id",
+              "value": "={{ $('Process Pending Jobs').item.json.report_job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "7cff589c-1884-451a-b65f-4a59c96f6257",
+              "name": "client_id",
+              "value": "={{ $('Process Pending Jobs').item.json.client_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f98e9c4c-3af0-4ee7-83ab-80f3ec486a1d",
+              "name": "client_name",
+              "value": "={{ $('Process Pending Jobs').item.json.client_name }}",
+              "type": "string"
+            },
+            {
+              "id": "fb5be6e6-df66-4308-a9da-5b9c83ae7134",
+              "name": "ga4_property_id",
+              "value": "={{ $('Process Pending Jobs').item.json.ga4_property_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c2582cd9-b6d8-4aff-8332-04c06b2eb5b0",
+              "name": "gsc_site_url",
+              "value": "={{ $('Process Pending Jobs').item.json.gsc_site_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2816,
+        -512
+      ],
+      "id": "f2e3e2da-14a4-4b00-ad9f-293d7515e5f8",
+      "name": "Set Context"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{\"https://searchconsole.googleapis.com/webmasters/v3/sites/\" + encodeURIComponent($json.gsc_site_url) + \"/searchAnalytics/query\"}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSearchConsoleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "=keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "startDate",
+              "value": "={{$now.minus({days:30}).toFormat('yyyy-MM-dd')}}"
+            },
+            {
+              "name": "endDate",
+              "value": "={{$now.toFormat('yyyy-MM-dd')}}"
+            },
+            {
+              "name": "rowLimit",
+              "value": "10"
+            },
+            {
+              "name": "searchType",
+              "value": "web"
+            },
+            {
+              "name": "dimensions",
+              "value": "={{[\"page\"]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -2640,
+        -672
+      ],
+      "id": "a6fc8157-1318-4da9-8222-2dc24c603770",
+      "name": "Get GSC Metrics",
+      "alwaysOutputData": false,
+      "credentials": {
+        "googleSearchConsoleOAuth2Api": {
+          "id": "Hj2b5cbuce2kQeIv",
+          "name": "Google Search Console account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0e68d0c3-78e7-41f8-bb47-a6cd6ed7354a",
+              "name": "clicks",
+              "value": "={{$json.rows?.[0]?.clicks ?? 0}}",
+              "type": "string"
+            },
+            {
+              "id": "fbd2f219-2a5b-4adf-9dfe-716289a84569",
+              "name": "impressions",
+              "value": "={{$json.rows?.[0]?.impressions ?? 0}}",
+              "type": "string"
+            },
+            {
+              "id": "8dab4778-e52d-469b-a93d-859baa8fac96",
+              "name": "ctr",
+              "value": "={{$json.rows?.[0]?.ctr ?? 0}}",
+              "type": "string"
+            },
+            {
+              "id": "0680aba0-3065-412e-9b96-38e44a566848",
+              "name": "avg_position",
+              "value": "={{$json.rows?.[0]?.position ?? 0}}",
+              "type": "string"
+            },
+            {
+              "id": "8868c300-a7d2-4d83-9180-b5b99129efe7",
+              "name": "report_job_id",
+              "value": "={{$('Set Context').item.json.report_job_id}}",
+              "type": "string"
+            },
+            {
+              "id": "23c55667-60ba-49d8-8400-e120d5c2628f",
+              "name": "client_id",
+              "value": "={{$('Set Context').item.json.client_id}}",
+              "type": "string"
+            },
+            {
+              "id": "20f1b31a-bbc0-4b07-9079-94f649200e2d",
+              "name": "client_name",
+              "value": "={{$('Set Context').item.json.client_name}}",
+              "type": "string"
+            },
+            {
+              "id": "b7b1600e-8afa-4e7a-8851-951bd2ab7d31",
+              "name": "users_count",
+              "value": "={{$json.totalUse",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2480,
+        -672
+      ],
+      "id": "01e3c60e-7168-47ed-a85b-e4c43cb8d89f",
+      "name": "Normalize GSC Metrics"
+    },
+    {
+      "parameters": {
+        "propertyId": {
+          "__rl": true,
+          "value": "541923475",
+          "mode": "list",
+          "cachedResultName": "Website Analytics",
+          "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p541923475/"
+        },
+        "metricsGA4": {
+          "metricValues": [
+            {},
+            {
+              "listName": "sessions"
+            },
+            {
+              "listName": "screenPageViews"
+            },
+            {
+              "listName": "eventCount"
+            }
+          ]
+        },
+        "dimensionsGA4": {
+          "dimensionValues": [
+            {}
+          ]
+        },
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.googleAnalytics",
+      "typeVersion": 2,
+      "position": [
+        -2560,
+        -416
+      ],
+      "id": "31ec2a1a-f6d0-4791-b9c6-7682b23c912f",
+      "name": "Get GA4 Metrics",
+      "credentials": {
+        "googleAnalyticsOAuth2": {
+          "id": "znXkNZcJpZvU6ds2",
+          "name": "Google Analytics account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -3584,
+        256
+      ],
+      "id": "5a9af039-e9a5-466a-ac9c-6aeffd2ca472",
+      "name": "Schedule Trigger2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    id AS report_job_id,\n    client_id\nFROM report_jobs\nWHERE status='GENERATING'\nORDER BY created_at ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -3376,
+        256
+      ],
+      "id": "05183fc4-c74d-47a6-972c-c666c12e19c8",
+      "name": "Get GENERATING Jobs",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me2",
+      "typeVersion": 1,
+      "position": [
+        -3152,
+        416
+      ],
+      "id": "71426aeb-872e-46c5-87d0-92d6acb58c9a",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3168,
+        256
+      ],
+      "id": "af9b4bc7-e4aa-4096-b4e4-44d4b2a0b12a",
+      "name": "Process Report Jobs"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    c.client_name,\n    c.email,\n    m.sessions,\n    m.users_count,\n    m.pageviews,\n    m.event_count,\n    m.clicks,\n    m.impressions,\n    m.ctr,\n    m.avg_position\nFROM metrics m\nJOIN clients c\nON m.client_id=c.id\nWHERE m.report_job_id={{$json.report_job_id}}\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -2960,
+        240
+      ],
+      "id": "bb21679a-d29c-40cc-90a9-366bec663edd",
+      "name": "Get Report Data",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "77b70628-6a0e-4002-b79d-7bc17713fcdd",
+              "name": "report_prompt",
+              "value": "={{\n`\nGenerate a professional monthly website performance report.\n\nClient Name: ${$json.client_name}\n\nWebsite Traffic:\nSessions: ${$json.sessions}\nUsers: ${$json.users_count}\nPage Views: ${$json.pageviews}\nEvents: ${$json.event_count}\n\nSEO Performance:\nClicks: ${$json.clicks}\nImpressions: ${$json.impressions}\nCTR: ${$json.ctr}\nAverage Position: ${$json.avg_position}\n\nRequirements:\n1. Executive Summary\n2. Traffic Analysis\n3. SEO Analysis\n4. Key Insights\n5. Recommendations\n6. Next Month Action Plan\n\nKeep the tone professional, data-driven, and suitable for agency clients.\n`\n}}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2768,
+        240
+      ],
+      "id": "8dd396bb-dd4c-4c6c-8619-1f0949bff217",
+      "name": "Build Report Context"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4",
+          "mode": "list",
+          "cachedResultName": "GPT-4"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an expert digital marketing analyst and SEO consultant.\nCreate professional monthly client reports."
+            },
+            {
+              "content": "={{$json.report_prompt}}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        -2592,
+        240
+      ],
+      "id": "f1220d12-7eff-41b8-80a9-956d987b5ef0",
+      "name": "Generate AI Summary",
+      "credentials": {
+        "openAiApi": {
+          "id": "fqySnAnY9VcorKYQ",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO reports\n(\n    client_id,\n    report_job_id,\n    ai_summary,\n    email_sent\n)\nVALUES\n(\n    {{ $('Process Report Jobs').item.json.client_id }},\n    {{ $('Process Report Jobs').item.json.report_job_id }},\n    {{ JSON.stringify($json.output?.[0]?.content?.[0]?.text || \"Error: AI report content was undefined.\") }},\n    0\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -2304,
+        240
+      ],
+      "id": "2a850220-8a43-4080-98d7-f539cb85934a",
+      "name": "Insert Report",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE report_jobs\nSET\nstatus='EMAILING',\nupdated_at=NOW()\nWHERE id={{$('Process Report Jobs').item.json.report_job_id}};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -2096,
+        240
+      ],
+      "id": "3a0fbe47-7aa1-46ee-b46c-32221b44c694",
+      "name": "Update Status = EMAILING",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me3",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -1232
+      ],
+      "id": "562a79a2-e5aa-4028-9741-8c060cdc03a2",
+      "placeholder": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "reports@agencypulseai.local",
+        "toEmail": "ayush@local.test",
+        "subject": "={{$json.email_subject}}",
+        "html": "={{ $json.email_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -592,
+        -1408
+      ],
+      "id": "904485fc-09c6-4cd5-a2de-c88b12d7f218",
+      "name": "Send an Email",
+      "webhookId": "b646433b-c37a-4b3d-b8e4-c5339bcb64be",
+      "credentials": {
+        "smtp": {
+          "id": "xkuioAlV0F4PV0qJ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1616,
+        -1392
+      ],
+      "id": "4960679f-e7f9-493d-9e23-2cf7d48e0c86",
+      "name": "Email Sender Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    id AS report_job_id,\n    client_id\nFROM report_jobs\nWHERE status='EMAILING'\nORDER BY created_at ASC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -1408,
+        -1392
+      ],
+      "id": "2a36e7de-ec1d-46b2-a5f7-9457701d4964",
+      "name": "Get EMAILING Jobs",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    c.client_name,\n    c.email,\n    r.ai_summary,\n    r.id AS report_id,\n    r.report_job_id\nFROM reports r\nJOIN clients c\nON r.client_id = c.id\nWHERE r.report_job_id={{$json.report_job_id}}\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -976,
+        -1408
+      ],
+      "id": "9a579a54-2f61-4a8f-a987-0bcac0c1612b",
+      "name": "Get Report & Client Details",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5bd5462d-26fa-4753-93d0-9f9e04f631d0",
+              "name": "email_subject",
+              "value": "={{\n  `${$json.client_name} - Monthly Performance Report`\n}}",
+              "type": "string"
+            },
+            {
+              "id": "6fde6403-4db8-43e2-9256-50d021248ec9",
+              "name": "email_html",
+              "value": "={{\n`\n<html>\n<head>\n<style>\nbody {\n  font-family: Arial, sans-serif;\n  line-height: 1.6;\n}\n.container {\n  padding: 20px;\n}\n</style>\n</head>\n<body>\n<div class=\"container\">\n\n<h2>Monthly Performance Report</h2>\n\n<p>Hello ${$json.client_name},</p>\n\n<p>Please find your website performance report below.</p>\n\n<hr>\n\n<pre style=\"white-space: pre-wrap; font-family: Arial, sans-serif;\">\n${$json.ai_summary || 'No report content available.'}\n</pre>\n\n<hr>\n\n<p>\nRegards,<br>\nAgencyPulseAI\n</p>\n\n</div>\n</body>\n</html>\n`\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -768,
+        -1408
+      ],
+      "id": "eef5fd58-d7fb-4d00-ac81-baa3d861e355",
+      "name": "Build Email Content"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE reports\nSET\nemail_sent=1\nWHERE id={{ $('Get Report & Client Details').item.json.report_job_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -400,
+        -1408
+      ],
+      "id": "c3b7ce53-5df6-494b-9a2c-90b707f956dc",
+      "name": "Update Report Sent Flag",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE report_jobs\nSET\n    status = 'COMPLETED',\n    updated_at = NOW()\nWHERE id = {{ $('Process Email Jobs').first().json.report_job_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -208,
+        -1408
+      ],
+      "id": "e4c12a60-3c55-4cf0-a09b-539aefb66849",
+      "name": "Update Status = COMPLETED",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1360,
+        -528
+      ],
+      "id": "3f68b3c0-39ae-44a4-9890-dfefa6ddbb25",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4c5ec5fa-984d-45aa-9945-3ae92cf9661b",
+              "name": "workflow_name",
+              "value": "={{$json.workflow.name}}",
+              "type": "string"
+            },
+            {
+              "id": "118cd230-4c44-4709-bb78-721986ac3de2",
+              "name": "workflow_id",
+              "value": "={{$json.workflow.id}}",
+              "type": "string"
+            },
+            {
+              "id": "0d6c8db0-4397-4478-9434-458c160fd78f",
+              "name": "node_name",
+              "value": "={{$json.lastNodeExecuted}}",
+              "type": "string"
+            },
+            {
+              "id": "d44e8ecc-e155-49d4-a124-9c2dcc274179",
+              "name": "error_message",
+              "value": "={{$json.error.message}}",
+              "type": "string"
+            },
+            {
+              "id": "dd2f3963-d23b-4605-9256-9584981ee433",
+              "name": "stack_trace",
+              "value": "={{$json.error.stack}}",
+              "type": "string"
+            },
+            {
+              "id": "68aeded0-abe2-494e-9c36-28bc722b2659",
+              "name": "error_time",
+              "value": "={{$now}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1152,
+        -528
+      ],
+      "id": "f070343d-4763-40a6-b30c-acb412a68755",
+      "name": "Extract Error Context"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO error_logs\n(\n    workflow_name,\n    node_name,\n    error_message\n)\nVALUES\n(\n    '{{ $json.workflow_name.replace(/'/g,\"''\") }}',\n    '{{ $json.node_name.replace(/'/g,\"''\") }}',\n    '{{ JSON.stringify({\n        execution_id: $json.execution_id,\n        error_time: $json.error_time,\n        message: $json.error_message,\n        stack_trace: $json.stack_trace\n      }).replace(/'/g,\"''\") }}'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -944,
+        -528
+      ],
+      "id": "24e2d0e5-aac9-4b46-ab32-5b81715a67bd",
+      "name": "Insert Error Log",
+      "credentials": {
+        "mySql": {
+          "id": "8qcyAIaJR5ez7e4J",
+          "name": "AgencyPulseAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "107d650c-afff-456a-a513-911a4382ca67",
+              "name": "Subject",
+              "value": "={{ 'AgencyPulseAI Alert : ' + $json.workflow_name + ' Failed' }}",
+              "type": "string"
+            },
+            {
+              "id": "0655b551-e230-4590-99dd-dc42546676ed",
+              "name": "Body",
+              "value": "={{ ` Workflow: ${$json.workflow_name}  Node: ${$json.node_name}  Execution ID: ${$json.execution_id}  Time: ${$json.error_time}  Error: ${$json.error_message}  Stack Trace: ${$json.stack_trace} ` }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -736,
+        -528
+      ],
+      "id": "4b31d8e6-c049-4e50-8cd8-13087b1cb9f8",
+      "name": "Build Alert Email"
+    },
+    {
+      "parameters": {
+        "fromEmail": "admin123@local.test",
+        "toEmail": "ayush@local.test",
+        "subject": "={{$json.subject}}",
+        "html": "={{$json.body}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        -528
+      ],
+      "id": "6ea5202f-20d6-43ae-869a-4246db34c085",
+      "name": "Send Alert Email",
+      "webhookId": "c7cae7e5-28a7-4318-be4e-138acda3f81a",
+      "credentials": {
+        "smtp": {
+          "id": "xkuioAlV0F4PV0qJ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3200,
+        -496
+      ],
+      "id": "518ebb32-02d4-4bc5-933d-c8978415d006",
+      "name": "Process Pending Jobs"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -3200,
+        -1392
+      ],
+      "id": "e5d1f690-ba91-4852-ba41-91cc993c9591",
+      "name": "Process Active Client"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow 1 – Scheduler\nThis workflow acts as the entry point of AgencyPulseAI. It runs on a predefined schedule, retrieves all active clients from the clients table, and creates a new record in the report_jobs table with a status of PENDING for each client. The workflow initializes the reporting pipeline and ensures that every active client enters the automated report generation process.",
+        "height": 560,
+        "width": 1888
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3664,
+        -1600
+      ],
+      "typeVersion": 1,
+      "id": "d0a1ae4f-f16d-4373-9cb1-d4f1b03e27cc",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow 2 – Data Collector\nThis workflow processes all PENDING report jobs by collecting website analytics and search performance data from Google Analytics 4 (GA4) and Google Search Console (GSC). The collected metrics are normalized and stored in the metrics table. Once data collection is completed successfully, the report job status is updated to GENERATING, making it available for AI-based report creation.",
+        "height": 768,
+        "width": 1888,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3664,
+        -896
+      ],
+      "typeVersion": 1,
+      "id": "44244a86-f6f3-447b-ba32-5231938e868b",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow 3 – AI Generator\nThis workflow generates professional website performance reports using OpenAI. It retrieves all report jobs with a status of GENERATING, fetches the corresponding analytics data from the metrics table, and creates an AI-powered report containing executive summaries, traffic analysis, SEO insights, recommendations, and action plans. The generated report is stored in the reports table, and the job status is updated to EMAILING.",
+        "height": 592,
+        "width": 1904,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3664,
+        16
+      ],
+      "typeVersion": 1,
+      "id": "188dcddd-9cf6-464a-8daf-8bfa639082be",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow 4 – Email Sender\nThis workflow is responsible for delivering AI-generated reports to clients. It retrieves report jobs with a status of EMAILING, fetches the generated report and client information, builds an HTML email, and sends the report to the client's registered email address. After successful delivery, the reports table is updated with email_sent = 1, and the report job status is changed to COMPLETED, marking the end of the reporting lifecycle.",
+        "height": 560,
+        "width": 1696,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1664,
+        -1600
+      ],
+      "typeVersion": 1,
+      "id": "322eddc8-6f46-45c7-b0ff-364db24e53ed",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1200,
+        -1392
+      ],
+      "id": "4159a88a-8fd6-4a2b-845e-7720c9d7ef78",
+      "name": "Process Email Jobs"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow 5 – Error Monitor\nThis workflow provides centralized error handling and monitoring for AgencyPulseAI. It is triggered whenever any workflow execution fails, captures execution details such as workflow name, failed node, error message, stack trace, and execution ID, and stores the information in the error_logs table. It also sends an alert email to the administrator, enabling rapid troubleshooting and ensuring the reliability of the reporting system.",
+        "height": 752,
+        "width": 1696,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1664,
+        -880
+      ],
+      "typeVersion": 1,
+      "id": "5aee904b-d839-443e-9404-f1f69f7c0b37",
+      "name": "Sticky Note5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Active Clients",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me": {
+      "main": [
+        [
+          {
+            "node": "Process Active Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Get PENDING Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me1": {
+      "main": [
+        [
+          {
+            "node": "Process Pending Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Clients": {
+      "main": [
+        [
+          {
+            "node": "Process Active Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert PENDING Job": {
+      "main": [
+        []
+      ]
+    },
+    "Get PENDING Jobs": {
+      "main": [
+        [
+          {
+            "node": "Process Pending Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status = COLLECTING": {
+      "main": [
+        [
+          {
+            "node": "Set Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Insert Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Metrics": {
+      "main": [
+        [
+          {
+            "node": "Update Status = GENERATING",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Context": {
+      "main": [
+        [
+          {
+            "node": "Get GA4 Metrics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get GSC Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GSC Metrics": {
+      "main": [
+        [
+          {
+            "node": "Normalize GSC Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize GSC Metrics": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GA4 Metrics": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Get GENERATING Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GENERATING Jobs": {
+      "main": [
+        [
+          {
+            "node": "Process Report Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me2": {
+      "main": [
+        [
+          {
+            "node": "Process Report Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Report Jobs": {
+      "main": [
+        [
+          {
+            "node": "Get Report Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Report Data": {
+      "main": [
+        [
+          {
+            "node": "Build Report Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Report Context": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Summary": {
+      "main": [
+        [
+          {
+            "node": "Insert Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Report": {
+      "main": [
+        [
+          {
+            "node": "Update Status = EMAILING",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me3": {
+      "main": [
+        [
+          {
+            "node": "Process Email Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send an Email": {
+      "main": [
+        [
+          {
+            "node": "Update Report Sent Flag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Sender Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get EMAILING Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get EMAILING Jobs": {
+      "main": [
+        [
+          {
+            "node": "Process Email Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Report & Client Details": {
+      "main": [
+        [
+          {
+            "node": "Build Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email Content": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Report Sent Flag": {
+      "main": [
+        [
+          {
+            "node": "Update Status = COMPLETED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Error Context": {
+      "main": [
+        [
+          {
+            "node": "Insert Error Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Error Log": {
+      "main": [
+        [
+          {
+            "node": "Build Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Alert Email": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Pending Jobs": {
+      "main": [
+        [
+          {
+            "node": "Update Status = COLLECTING",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Active Client": {
+      "main": [
+        [
+          {
+            "node": "Insert PENDING Job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Email Jobs": {
+      "main": [
+        [
+          {
+            "node": "Get Report & Client Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "464f9d5c-69b9-48d9-9cd5-17cd2957d330",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0595145c7d9587a1b1a71e4f98980d5caead4ceedff79f4aa219fadefa3500e9"
+  },
+  "nodeGroups": [],
+  "id": "kyvDfP7bOuONlwUJ",
+  "tags": []
+}
